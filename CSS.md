@@ -173,7 +173,7 @@ before 解决外边距重叠，after 清除浮动解决高度塌陷
 - `center`
 - `baseline` 
 
-辅轴空白空间 `align-content`
+辅轴空白空间 `align-content` （无法作用于**单行**弹性元素）
 
 - `flex-start`
 - `flex-end`
@@ -188,14 +188,18 @@ before 解决外边距重叠，after 清除浮动解决高度塌陷
 - `flex-shrink` 收缩系数。**默认为1**，父元素空间不足时，对子元素收缩，
 - `flex-basis` 元素在主轴上的基础长度。默认auto，参考自身高度宽度
 
-常问：flex: 1 的含义
-
 简写方式
 
 - flex：增长 缩减 基础
 - `initial`: `flex: 0 1 auto`
 - `auto` : `flex: 1 1 auto`
 - `none` : `flex: 0 0 auto` 没有弹性
+
+**常问：flex: 1 的含义**
+
+- flex: 1 = flex 1 1 0
+
+- flex: 2 = flex 1 2 0
 
 排列顺序
 
@@ -295,4 +299,250 @@ before 解决外边距重叠，after 清除浮动解决高度塌陷
     - 通过设置外边距，将内容封锁在两边浮动元素中间
 
   
+
+## 其他
+
+**[面试官| web前端面试 - 面试官系列 (CSS](https://vue3js.cn/interview/css/box.html)**
+
+### 如何让元素在可视范围内不可见？
+
+- `display: none`  
+  - 元素在文档流中消失，但是还存在DOM树当中
+  - 绑定的事件不会触发
+  - 重新显示需要页面重绘
+- `visibility: hidden` 
+  - 元素还占据页面的物理空间
+  - 绑定的事件不会触发
+  - 重新显示不需要页面重绘
+- `opacity: 0` 
+  - 元素还占据页面的物理空间
+  - 绑定的事件会触发
+- `overflow: hidden` + `height: 0; width: 0; padding: 0; margin: 0; border: 0`
+- `position: absolute;` + `left: 100000px; top: 10000px` 移出可视区域
+- `position: relative/absolute` + `z-index: -999` 
+
+### 如何实现元素水平垂直居中？如果不定宽度和高度？
+
+1. 父元素 position: relative; 子元素：position: absolute; 设置 top:0 ; bottom:0;left:0;right:0;
+
+   然后 margin: auto
+
+```css
+#fa {
+    width: 400px;
+    height: 400px;
+    position: relative;
+    background-color: blue;
+}
+#son {
+    width: 100px;
+    height: 100px;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    margin: auto;
+    background-color: red;
+}
+```
+
+2. 使用定位和margin负值，需要知道子元素宽高
+
+父元素相对定位，子元素绝对定位
+
+top和left为50%，将子元素的左顶点移动到父元素中心
+
+然后子元素使用 margin-left和margin-top 负自身大小的50%
+
+```css
+#fa {
+    width: 400px;
+    height: 400px;
+    position: relative;
+    background-color: blue;
+}
+#son {
+    width: 100px;
+    height: 100px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-top: -50px;
+    margin-left: -50px;
+    background-color: red;
+}
+```
+
+3. 定位和transform: translate(50%, 50%)
+
+transform 代替了使用 margin负自身元素的一半调整到中心的操作，使得不需要知道高宽
+
+```css
+#fa {
+    width: 400px;
+    height: 400px;
+    position: relative;
+    background-color: blue;
+}
+#son {
+    width: 100px;
+    height: 100px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: red;
+}
+```
+
+4. 使用table-cell 和 inline-block
+
+父元素设置 table-cell，子元素设置inline-block
+
+然后给父元素设置：text-align: center, vertical-align: middle
+
+```css
+#fa {
+    width: 400px;
+    height: 400px;
+    display: table-cell;
+    text-align: center;
+    vertical-align: middle;
+    background-color: blue;
+}
+#son {
+    width: 100px;
+    height: 100px;
+    display: inline-block;
+    background-color: red;
+}
+```
+
+5. flex 布局
+
+父元素 display: flex；
+
+子元素在主轴上空白分配方式为 center，元素对齐方式为 center
+
+```css
+#fa {
+    width: 400px;
+    height: 400px;
+    display: flex;
+    background-color: blue;
+    justify-content: center;
+}
+#son {
+    width: 100px;
+    height: 100px;
+    align-self: center;
+    background-color: red;
+}
+```
+
+6. grid 网格布局
+
+```css
+#fa {
+    width: 400px;
+    height: 400px;
+    display: grid;
+    background-color: blue;
+    justify-content: center;
+}
+#son {
+    width: 100px;
+    height: 100px;
+    align-self: center;
+    background-color: red;
+}
+```
+
+- 行内元素居中
+  - 水平居中
+    - `text-align: center` 
+    - flex 布局下的行内元素，给父元素设置 `justify-content: center`
+  - 垂直居中
+    - 单行文本：`line-height: 父元素height`
+    - 多行文本：父元素：`display: table-cell` 子元素：`vertiacl-align: middle`
+    - flex 布局下的行内元素，子元素设置：`align-self: center`
+
+### 如何实现单行文本和多行文本的溢出省略？
+
+1. 单行文本溢出
+
+首先设置 `white-space: nowarp` 不能换行
+
+然后设置：`overflow: hidden` 这是 `text-overflow` 生效的基础
+
+最后设置：`text-overflow : ellipsis` 省略标记； clip：溢出裁剪
+
+2. 多行文本溢出
+
+- 基于高度阶段：伪元素+绝对定位
+
+  ```css
+  .demo{
+      position: relative;
+      line-height: 20px;
+      height: 40px;
+      overflow: hidden;
+  }
+  .demo::after{
+  	content: '...';
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      padding: 0 20px 0 10px;
+  }
+  ```
+
+  `word-break: break-all` : 英文单词换行拆分
+
+- 基于行数截断
+
+  。。。。对不起，没用过，不了解
+
+### 视差滚动
+
+- background-attachment: fixed
+
+  ```css
+  .g-img{
+      background-image: url(...);
+      background-size: cover;
+      background-position: center, center;
+      background-attachment: fixed;
+  }
+  ```
+
+- transform: translate3D
+
+### 响应式设计
+
+- 媒体查询
+
+- 百分比
+
+- vw/vh
+
+- rem
+
+  - 默认情况下浏览器字体大小为 16px，如果设置 1rem = 16px*62.% = 10px
+
+  - 配合媒体查询
+
+  - ```css
+    @media screen and (max-width: 414px){
+        html{
+            font-size: 18px;
+        }
+    }
+    @media screen and (max-width: 375px){
+        html{
+            font-size: 16px;
+        }
+    }
+    ```
 
