@@ -913,23 +913,378 @@ function shallowClone(obj){
 - Object.assign(target, sourse)
 - Array.prototype.slice(beg, end) 切片函数，返回一个新数组
 - Array.prototype.concat(arr1, arr2....) 数组连接，返回一个新数组
-- ES6中的扩展运算符
+- ES6中的扩展运算符（`...` )
 
-### this 对象的理解
+**深拷贝**
 
+深拷贝会开辟一个新的内存空间，对象完全相同但是对应不同的内存地址，修改一个对象的属性不会影响另一个对象的属性
 
+实现深拷贝的方式
+
+- JSON.stringify()
+
+```javascript
+const newObj = JSON.parse(JSON.stringfiy(obj))
+```
+
+但是会忽略值为 Symbol 和 null 的属性
+
+![image-20220318011109534](C:\Users\RAINSUN\AppData\Roaming\Typora\typora-user-images\image-20220318011109534.png)
+
+- 手写深拷贝
+
+考虑循环调用
+
+```JS
+function deepClone(obj, hash = new weakMap()){
+    if(obj === null || typeof obj !== 'object') return obj;
+    if(obj instanceof Date()) return new Date(obj);
+    if(obj instanceof RegExp()) return new RegExp(obj);
+    let res = hash.get(obj);
+    if(res) return res;
+    res = new obj.constructor();
+    hash.set(obj, res)
+    for(let key in obj){
+        if(obj.hasOwnProperty(key)){
+            res[key] = deepClone(obj[key], hash);
+        }
+    }
+    return res;
+}
+```
+
+### this 对象的理解（四种绑定规则+this的指向问题）
+
+#### 四种绑定
+
+- 默认绑定
+
+1. 全局当中 this === window
+
+```js
+console.log(this === window); // true
+```
+
+2. 函数的**独立调用** this === window
+
+```js
+function test(){
+    console.log(this === window); // true
+}
+test();// 等于 window.test()
+```
+- 隐式绑定
+谁调用，谁就是this (隐式丢失，参数绑定)
+1. 对象内部有function
+```js
+var a = 0;
+var obj = {
+    a: 2,
+    foo: function(){
+        console.log(this) // obj
+    }
+}
+obj.foo() // this 指向 obj
+```
+2. 对象的函数赋给了另一个对象，对象调用那么，this就是哪个对象
+
+```js
+function foo(){
+	console.log(this); // window
+}
+var obj = {
+    a : 2,
+    foo: foo
+}
+// 隐式丢失（变量赋值）
+var bar = obj.foo;
+bar();	// 独立调用，this指向window
+```
+
+3. 参数赋值的情况，函数里调用函数
+
+```js
+function foo(){
+    console.log(this);	// window
+}
+// 预编译过程，实参被赋值为形参，这是值拷贝的过程（浅拷贝）
+function bar(fn){
+    fn();	// 独立调用
+}
+var obj = {
+    a: 2,
+    foo: foo
+}
+bar(obj.foo)
+```
+
+4. forEach, sort的this 默认指向window,可以设置 this
+
+```js
+arr = [1,2,3];
+arr.forEach(function(item, idx, arr){
+    console.log(this);
+}, 设置的this)
+```
+
+2. 函数内部调用函数，test **独立调用this指向window**
+```js
+var a = 0;
+var obj = {
+    a: 2,
+    foo: function(){
+        console.log(this);	// obj
+        function test(){
+            console.log(this); // window
+        }
+        test()	// 独立调用
+    }
+}
+obj.foo() // this 指向 obj
+```
+3. 在浏览器环境中，**立即执行函数内部的 this 指向 window**
+```js
+var a = 0;
+var obj = {
+    a: 2,
+    foo: function(){
+        console.log(this);	// obj
+        
+        // 立即执行函数
+        (function(){
+            console.log(this); // window
+        })();
+    }
+}
+obj.foo() // this 指向 obj
+```
+
+4. return 一个函数，产生闭包
+
+```js
+var a = 0;
+var obj = {
+    a: 2,
+    foo: function () {
+        console.log(this); // obj
+        function test() {
+            console.log(this) // window，调用的，独立调用
+        }
+        return test;
+    }
+}
+obj.foo()();
+```
+
+- 显式绑定
+
+`function.call(指定this, 参数1， 参数2)`
+
+`function.apply(this, [参数1， 参数2，...])`
+
+`function.bind(this)(参数1，参数2， ...)`
+
+```js
+function foo(a, b, c){
+    console.log(this);
+    console.log(a, b, c);
+}
+var obj = {
+    a: 2,
+    foo,
+}
+var bar = obj.foo;
+bar.call(obj, 1, 2, 3);
+bar.apply(obj, [1, 2, 3]);
+bar.bind(obj)(1, 2, 3); // this = obj
+// bind 会返回一个新的函数，
+var baz = bar.bind(obj);
+baz(1, 2, 3);// 新函数调用的 this依然为 obj
+// 虽然看起来是独立调用大师this是传入的指定obj，而不是window
+```
+
+- new 绑定, this指向new 的实例对象
+
+```js
+function Person(){
+    this.a = 2;
+    console.log(this)
+}
+let person = new Person();
+```
+
+需要注意的是，如果构造函数 return 一个对象，那么 this 指向这个返回的对象
+
+返回的是一个简单类型或者 null 的时候 ,this指向实例对象
+
+- 优先级
+
+默认绑定： window，函数独立调用
+
+隐式绑定：对象调用方法，obj.fun()，存在隐式丢失，函数赋值的问题
+
+显式绑定：call, apply, bind
+
+new绑定：new 一个对象，this 指向实例对象
+
+**new 绑定 > 显式绑定 > 隐式绑定 > 默认绑定**
+
+#### 箭头函数的this
+
+1. 箭头函数的 this 是函数定义的时候就被确定下来的，而不是在函数调用的时候确定的
+2. 箭头函数没有自己的 this， this指向父级作用域的执行上下文
+3. 箭头函数无法使用 apply， call和bind方法改变this的执行
+4. 箭头函数没有自己的 this， arguments， 不能用作构造函数
 
 ### bind call apply的区别，手写bind
 
+`function.call(指定this, 参数1， 参数2)`
 
+`function.apply(this, [参数1， 参数2，...])`
 
-### JavaScript的本地存储方式 cookie sessionStorage localStorage indexedDB
+`function.bind(this)(参数1，参数2， ...)`
 
+- call apply bind 可以用来改变 this 的指向。但是使用的方式不同
+- 第一个参数都是 this 要指向的对象，如果第一个参数为 null 或者为 undefined，那么this就默认指向全局window
+- 三者都可以传递参数，但是 apply 传递的是数组，call是参数列表，bind可以分多次传入
+- bind 返回绑定this之后的函数，不立即执行，返回一个永久改变 this 指向的函数；call和apply是立即执行的
 
+**手写 bind**
 
-### 防抖和节流，手写实现
+- 改变 this的指向，动态传递参数
+- 使用 new 关键词的时候，可以看见prototype上的属性
 
+```js
+// context 是我们指定的this，和一些参数
+Function.prototype.myBind = function(context){
+    // 获取调用bind的函数,谁调用设置就是this
+    let fn = this;
+    // 使用字符串切片的方法获取除了this之外传入的参数
+    let args = Array.prototype.slice.call(arguments, 1);
+    let target = function(){
+        let innerArgs = Array.prototype.slice.call(arguments. 1);
+        // 改变了this指向，执行了函数
+        return fn.apply(context, args.concat(innerArgs));
+    } 
+    // 获取fn prototype上的方法
+    let Buffer = function(){};
+    Buffer.prototype = fn.prototype;
+    target.prototype = new Buffer();
+    return target;
+}
+```
 
+### 节流和防抖，手写实现
 
+浏览器的窗口大小变化（reize)，滚动条的滑动（scroll)，键盘按下（keypress），鼠标移动（mousemove) 等事件触发时，会不断触发绑定这些事件的回调函数，浪费资源
 
+为了优化体验，需要对这类事件的回调函数的调用次数进行限制，于是我们就可以采用防抖和节流的方法来减少调用的频率
+
+- 节流：n 秒内只执行一次，如果n秒内重复触发，但是只有一次生效
+- 防抖：n 秒后执行回调，但是如果在这 n 秒内被重复触发，则重新计时
+
+**区别**
+
+函数防抖关注一定时间连续触发的事件，只在最后一次执行，函数节流则是一段时间内触发一次
+
+**节流的手写实现**
+
+- 时间戳写法，事件立即执行
+
+```js
+function throttled(fn, delay){
+    let startTime = Date().now();
+    return function(){
+        let curTime = Date().now();
+        if(curTime - startTime > delay){
+            fn.apply(this, arguments);
+            startTime = Date.now();
+        }
+    }
+}
+```
+
+- 定时器写法，事件 delay 毫秒后执行
+
+```js
+function throttled(fn, delay){
+    let timeId = null;
+    return function(){
+        if(timeId) clearTimeout(timeId);
+        timeId = setTimeout(()=>{
+            fn.apply(this, arguments);
+            timeId = null;
+        }, delay)
+    }
+}
+```
+
+**防抖的手写实现**
+
+- 第一次点击没有立即执行，会等待 delay 毫秒后执行
+
+```js
+btn.addEventListener('click', debounce(submit, 1000), false);
+function submit(e){
+    console.log(1);
+}
+
+function debounce(fn, delay){
+    let timeId = null;
+    return function(){
+        if(timeId) clearTimeout(timeId);
+        timeId = setTimeout(() => {
+            // 注意这里直接使用了 this 和 argumnets 
+            // 是因为这里时箭头函数，没有自己的 this，
+            // 所以会去上一级的作用域找this，此时的this是 button
+            // 如果是普通函数function声明的，this的指向为window
+            fn.apply(this, arguments)
+        }, delay)
+    }
+}
+```
+
+- 第一次点击立即执行
+
+```js
+function debounce(fn, delay){
+    let timeId = null;
+    return function(){
+        if(timeId) clearTimeout(timeId);
+        let firstClick = !timeId;
+        if(firstClick){
+            fn.apply(this, arguments);
+        }
+        timeId = setTimeout(() => {
+            timeId = null;
+        }, delay);
+    }
+}
+```
+
+- 结合
+
+```js
+function debounce(fn, delay, immediate){
+    let timeId = null;
+    return function(){
+        if(timeId) clearTimeout(timeId);
+        if(immediate){
+            let firstClick = !timeId;
+            if(firstClick){
+                fn.apply(this, arguments)
+            }
+            timeId = setTimeout(() => {
+                // 第一次点击后，delay事件后将timeId置为空，
+                // firstClick又可以为true，执行fn
+                timeId = null; 
+            }, delay)
+        }else{
+            timeId = setTimeout(() => {
+                fn.apply(this, arguments);
+            }, delay);
+        }
+    }
+}
+```
 
